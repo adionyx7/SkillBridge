@@ -38,6 +38,8 @@ export const CoursePlayerModal: React.FC<CoursePlayerModalProps> = ({ course, on
     }
   };
 
+  const isYouTubeUrl = (url: string) => url.includes('youtube.com/embed') || url.includes('youtu.be/');
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
       <div className="relative w-full max-w-5xl glass-panel rounded-2xl border border-slate-700 shadow-2xl overflow-hidden flex flex-col lg:flex-row max-h-[90vh]">
@@ -61,13 +63,26 @@ export const CoursePlayerModal: React.FC<CoursePlayerModalProps> = ({ course, on
           
           {/* Video Player */}
           <div className="relative aspect-video bg-black rounded-xl overflow-hidden border border-slate-800 shadow-inner">
-            <video
-              key={currentLesson.id}
-              controls
-              autoPlay
-              className="w-full h-full object-cover"
-              src={currentLesson.videoUrl}
-            />
+            {isYouTubeUrl(currentLesson.videoUrl) ? (
+              <iframe
+                key={currentLesson.id}
+                src={currentLesson.videoUrl}
+                title={currentLesson.title}
+                className="w-full h-full"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+              />
+            ) : (
+              <video
+                key={currentLesson.id}
+                controls
+                autoPlay
+                className="w-full h-full object-cover"
+                src={currentLesson.videoUrl}
+              />
+            )}
           </div>
 
           <div className="flex items-center justify-between bg-slate-900/60 p-4 rounded-xl border border-slate-800">

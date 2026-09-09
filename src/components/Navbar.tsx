@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { GraduationCap, Briefcase, ShieldCheck, LogIn, UserPlus, Sparkles, LayoutDashboard, Edit3 } from 'lucide-react';
+import { GraduationCap, LogIn, UserPlus, Sparkles, LayoutDashboard, Edit3 } from 'lucide-react';
 
 interface NavbarProps {
   onOpenAuth: (defaultRole?: 'student' | 'company' | 'admin', isRegister?: boolean) => void;
@@ -80,39 +80,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth, onOpenEditProfile, a
             )}
           </nav>
 
-          {/* Role Indicator & Actions */}
-          <div className="flex items-center gap-3">
-            
-            {/* Demo Quick Role Switcher */}
-            <div className="hidden lg:flex items-center bg-slate-900/80 rounded-lg p-1 border border-slate-800 text-xs">
-              <span className="text-slate-500 font-medium px-2 text-[10px] uppercase tracking-wider">Demo Role:</span>
-              <button
-                onClick={() => setRole('student')}
-                className={`px-2.5 py-1 rounded-md transition-all font-medium flex items-center gap-1 ${
-                  role === 'student' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <GraduationCap className="w-3 h-3" /> Student
-              </button>
-              <button
-                onClick={() => setRole('company')}
-                className={`px-2.5 py-1 rounded-md transition-all font-medium flex items-center gap-1 ${
-                  role === 'company' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Briefcase className="w-3 h-3" /> Company
-              </button>
-              <button
-                onClick={() => setRole('admin')}
-                className={`px-2.5 py-1 rounded-md transition-all font-medium flex items-center gap-1 ${
-                  role === 'admin' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <ShieldCheck className="w-3 h-3" /> Admin
-              </button>
-            </div>
-
-            {/* Auth Buttons */}
+{/* Role Indicator & Actions */}
+            <div className="flex items-center gap-3">
+              {/* Auth Buttons */}
             {role === 'guest' ? (
               <div className="flex items-center gap-2">
                 <button

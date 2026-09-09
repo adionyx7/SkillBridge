@@ -102,7 +102,7 @@ async function createLocalProfile(payload: Record<string, unknown>) {
 }
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [role, setRole] = useState<UserRole>('guest');
+  const [role, setRole] = useState<UserRole>('student');
   
   const [students, setStudents] = useState<StudentProfile[]>([]);
   const [companies, setCompanies] = useState<CompanyProfile[]>([]);
@@ -121,7 +121,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     fetchData();
-  }, []);
+    // Auto-login as demo student for testing
+    const demoStudent = students.find(s => s.email === 'alex.student@example.com');
+    if (demoStudent) {
+      setCurrentStudent(demoStudent);
+      setRole('student');
+    }
+  }, [students]);
 
   const fetchData = async () => {
     try {
