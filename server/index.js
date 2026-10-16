@@ -166,6 +166,29 @@ async function initDatabase() {
       )
     `);
 
+    // 6. Posts Table (Experience & Certificate Showcase Feed)
+    await dbRun(`
+      CREATE TABLE IF NOT EXISTS posts (
+        id TEXT PRIMARY KEY,
+        author_id TEXT,
+        author_name TEXT NOT NULL,
+        author_role TEXT,
+        author_college TEXT,
+        author_branch TEXT,
+        author_avatar TEXT,
+        bio_headline TEXT,
+        content TEXT NOT NULL,
+        post_type TEXT DEFAULT 'experience',
+        certificates TEXT,
+        images TEXT,
+        tags TEXT,
+        likes_count INTEGER DEFAULT 0,
+        liked_by TEXT,
+        comments TEXT,
+        created_at TEXT
+      )
+    `);
+
     console.log('Database tables initialized.');
     await seedInitialData();
   } catch (err) {
@@ -364,6 +387,76 @@ async function seedInitialData() {
     );
   }
 
+  // Initial Posts (Experience & Certificate Showcase)
+  const initialPosts = [
+    {
+      id: 'post_1',
+      author_id: 'std_1',
+      author_name: 'Alex Morgan',
+      author_role: 'student',
+      author_college: 'IIT Bombay',
+      author_branch: 'Computer Science',
+      author_avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      bio_headline: '3rd Year CS Student @ IIT Bombay | Full-Stack Web Architecture Specialist',
+      content: 'Extremely thrilled to share that I just completed the "Advanced React & Web Architecture" certification on SkillBridge! Spent 4 weeks building scalable micro-frontends and optimizing state management. Huge thanks to the SkillBridge ecosystem for the hands-on project verification!',
+      post_type: 'certificate',
+      certificates: JSON.stringify([{
+        id: 'cert_101',
+        title: 'Advanced React & Web Architecture',
+        issuer: 'SkillBridge Ecosystem',
+        date: 'Sept 2026',
+        isVerified: true
+      }]),
+      images: JSON.stringify([
+        'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&auto=format&fit=crop&q=80'
+      ]),
+      tags: JSON.stringify(['React', 'WebDev', 'Certificate', 'Frontend']),
+      likes_count: 24,
+      liked_by: JSON.stringify(['std_2', 'comp_1']),
+      comments: JSON.stringify([
+        {
+          id: 'comm_1',
+          authorName: 'Sophia Chen',
+          authorAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+          text: 'Congratulations Alex! Super inspiring work on the React architecture projects.',
+          createdAt: '2 hours ago'
+        }
+      ]),
+      created_at: '1 day ago'
+    },
+    {
+      id: 'post_2',
+      author_id: 'std_2',
+      author_name: 'Sophia Chen',
+      author_role: 'student',
+      author_college: 'BITS Pilani',
+      author_branch: 'Information Systems',
+      author_avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+      bio_headline: 'Data Analytics & ML Researcher | BITS Pilani 4th Year',
+      content: 'Wrapped up a fantastic data science project analyzing real-time predictive models using Python, Pandas, and SQL. Sharing a glance of our dataset insights and automated dashboard metrics!',
+      post_type: 'experience',
+      certificates: JSON.stringify([]),
+      images: JSON.stringify([
+        'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&auto=format&fit=crop&q=80'
+      ]),
+      tags: JSON.stringify(['DataScience', 'Python', 'MachineLearning', 'InternshipExperience']),
+      likes_count: 38,
+      liked_by: JSON.stringify(['std_1']),
+      comments: JSON.stringify([]),
+      created_at: '2 days ago'
+    }
+  ];
+
+  for (const post of initialPosts) {
+    await dbRun(
+      `INSERT INTO posts (id, author_id, author_name, author_role, author_college, author_branch, author_avatar, bio_headline, content, post_type, certificates, images, tags, likes_count, liked_by, comments, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [post.id, post.author_id, post.author_name, post.author_role, post.author_college, post.author_branch, post.author_avatar, post.bio_headline, post.content, post.post_type, post.certificates, post.images, post.tags, post.likes_count, post.liked_by, post.comments, post.created_at]
+    );
+  }
+
   console.log('Seed data successfully inserted into SQLite database!');
 }
 
@@ -378,7 +471,6 @@ app.get('/api/health', (req, res) => {
 app.get('/api/supabase/status', async (req, res) => {
   if (!supabaseAdmin) return res.status(501).json({ error: 'Supabase admin client not configured on server.' });
   try {
-    // simple check: list users count (requires appropriate RLS/privileges)
     const { data, error } = await supabaseAdmin.from('users').select('id', { count: 'exact', head: false }).limit(1);
     if (error) return res.status(500).json({ error: error.message });
     return res.json({ success: true, sample: data?.length ?? 0 });
@@ -394,6 +486,7 @@ app.get('/api/data', async (req, res) => {
     const rawCompanies = await dbAll('SELECT * FROM companies');
     const rawInternships = await dbAll('SELECT * FROM internships');
     const rawApplications = await dbAll('SELECT * FROM applications');
+    const rawPosts = await dbAll('SELECT * FROM posts');
 
     const students = rawStudents.map(s => ({
       ...s,
@@ -451,7 +544,27 @@ app.get('/api/data', async (req, res) => {
       studentSkillScores: JSON.parse(a.student_skill_scores || '{}')
     }));
 
-    res.json({ students, companies, internships, applications });
+    const posts = rawPosts.map(p => ({
+      id: p.id,
+      authorId: p.author_id,
+      authorName: p.author_name,
+      authorRole: p.author_role,
+      authorCollege: p.author_college,
+      authorBranch: p.author_branch,
+      authorAvatar: p.author_avatar,
+      bioHeadline: p.bio_headline,
+      content: p.content,
+      postType: p.post_type,
+      certificates: JSON.parse(p.certificates || '[]'),
+      images: JSON.parse(p.images || '[]'),
+      tags: JSON.parse(p.tags || '[]'),
+      likesCount: p.likes_count || 0,
+      likedBy: JSON.parse(p.liked_by || '[]'),
+      comments: JSON.parse(p.comments || '[]'),
+      createdAt: p.created_at
+    }));
+
+    res.json({ students, companies, internships, applications, posts });
   } catch (err) {
     console.error('Error fetching data:', err);
     res.status(500).json({ error: 'Failed to fetch data' });
@@ -638,11 +751,19 @@ app.post('/api/auth/login', async (req, res) => {
   if (!email) {
     return res.status(400).json({ error: 'Email is required.' });
   }
+  if (!password) {
+    return res.status(400).json({ error: 'Password is required.' });
+  }
 
   try {
     const user = await dbGet('SELECT * FROM users WHERE email = ?', [email.toLowerCase()]);
     if (!user) {
       return res.status(404).json({ error: 'User account not found. Please register first.' });
+    }
+
+    // ─── PASSWORD VERIFICATION ─────────────────────────────────────────────
+    if (user.password !== password) {
+      return res.status(401).json({ error: 'Incorrect password. Please try again.' });
     }
 
     if (role && user.role !== role && user.role !== 'admin') {
@@ -933,6 +1054,136 @@ app.put('/api/companies/:id/verify', async (req, res) => {
   }
 });
 
+// Create Post (Experience & Certificates)
+app.post('/api/posts', async (req, res) => {
+  const postData = req.body;
+  const postId = `post_${Date.now()}`;
+
+  try {
+    await dbRun(
+      `INSERT INTO posts (id, author_id, author_name, author_role, author_college, author_branch, author_avatar, bio_headline, content, post_type, certificates, images, tags, likes_count, liked_by, comments, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        postId,
+        postData.authorId || 'guest',
+        postData.authorName || 'Student',
+        postData.authorRole || 'student',
+        postData.authorCollege || '',
+        postData.authorBranch || '',
+        postData.authorAvatar || '',
+        postData.bioHeadline || '',
+        postData.content,
+        postData.postType || 'experience',
+        JSON.stringify(postData.certificates || []),
+        JSON.stringify(postData.images || []),
+        JSON.stringify(postData.tags || []),
+        0,
+        '[]',
+        '[]',
+        'Just now'
+      ]
+    );
+
+    const newPost = {
+      id: postId,
+      authorId: postData.authorId || 'guest',
+      authorName: postData.authorName || 'Student',
+      authorRole: postData.authorRole || 'student',
+      authorCollege: postData.authorCollege || '',
+      authorBranch: postData.authorBranch || '',
+      authorAvatar: postData.authorAvatar || '',
+      bioHeadline: postData.bioHeadline || '',
+      content: postData.content,
+      postType: postData.postType || 'experience',
+      certificates: postData.certificates || [],
+      images: postData.images || [],
+      tags: postData.tags || [],
+      likesCount: 0,
+      likedBy: [],
+      comments: [],
+      createdAt: 'Just now'
+    };
+
+    res.json({ success: true, post: newPost });
+  } catch (err) {
+    console.error('Create post error:', err);
+    res.status(500).json({ error: 'Failed to create post' });
+  }
+});
+
+// Like / Toggle Like Post
+app.post('/api/posts/:id/like', async (req, res) => {
+  const { id } = req.params;
+  const { userId } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID required to like post' });
+  }
+
+  try {
+    const post = await dbGet('SELECT * FROM posts WHERE id = ?', [id]);
+    if (!post) return res.status(404).json({ error: 'Post not found' });
+
+    let likedBy = JSON.parse(post.liked_by || '[]');
+    let likesCount = post.likes_count || 0;
+
+    if (likedBy.includes(userId)) {
+      likedBy = likedBy.filter(uid => uid !== userId);
+      likesCount = Math.max(0, likesCount - 1);
+    } else {
+      likedBy.push(userId);
+      likesCount += 1;
+    }
+
+    await dbRun('UPDATE posts SET likes_count = ?, liked_by = ? WHERE id = ?', [likesCount, JSON.stringify(likedBy), id]);
+    res.json({ success: true, likesCount, likedBy });
+  } catch (err) {
+    console.error('Like post error:', err);
+    res.status(500).json({ error: 'Failed to like post' });
+  }
+});
+
+// Add Comment to Post
+app.post('/api/posts/:id/comment', async (req, res) => {
+  const { id } = req.params;
+  const { authorName, authorAvatar, text } = req.body;
+
+  if (!text) return res.status(400).json({ error: 'Comment text required' });
+
+  try {
+    const post = await dbGet('SELECT * FROM posts WHERE id = ?', [id]);
+    if (!post) return res.status(404).json({ error: 'Post not found' });
+
+    const comments = JSON.parse(post.comments || '[]');
+    const newComment = {
+      id: `comm_${Date.now()}`,
+      authorName: authorName || 'Student',
+      authorAvatar: authorAvatar || '',
+      text,
+      createdAt: 'Just now'
+    };
+
+    comments.push(newComment);
+    await dbRun('UPDATE posts SET comments = ? WHERE id = ?', [JSON.stringify(comments), id]);
+    res.json({ success: true, comments });
+  } catch (err) {
+    console.error('Comment error:', err);
+    res.status(500).json({ error: 'Failed to add comment' });
+  }
+});
+
+// Delete Post
+app.delete('/api/posts/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await dbRun('DELETE FROM posts WHERE id = ?', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete post' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Backend server running on http://localhost:${PORT}`);
 });
+

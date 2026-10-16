@@ -24,31 +24,31 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   // Student Form State
   const [studentForm, setStudentForm] = useState({
-    name: 'Alex Morgan',
-    email: 'alex.student@example.com',
-    password: 'password123',
-    college: 'IIT Bombay',
+    name: '',
+    email: '',
+    password: '',
+    college: '',
     degree: 'B.Tech',
-    branch: 'Computer Science',
+    branch: '',
     year: '3rd Year',
-    location: 'Mumbai, India'
+    location: ''
   });
 
   // Company Form State
   const [companyForm, setCompanyForm] = useState({
-    companyName: 'TechCorp Innovations',
-    email: 'recruiter@techcorp.com',
-    password: 'password123',
-    website: 'https://techcorp.example.com',
-    industry: 'Software Solutions & AI',
-    location: 'Bengaluru, India',
-    description: 'Empowering future software innovators and cloud architects.'
+    companyName: '',
+    email: '',
+    password: '',
+    website: '',
+    industry: '',
+    location: '',
+    description: ''
   });
 
   // Admin Form State
   const [adminForm, setAdminForm] = useState({
-    email: 'admin@skillintern.com',
-    password: 'adminsecretkey'
+    email: '',
+    password: ''
   });
 
   const [errorMsg, setErrorMsg] = useState<string>('');
@@ -58,6 +58,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setActiveTab(defaultRole === 'guest' ? 'student' : defaultRole);
       setIsRegister(isRegisterDefault);
       setErrorMsg('');
+      // Reset forms on open
+      setStudentForm({ name: '', email: '', password: '', college: '', degree: 'B.Tech', branch: '', year: '3rd Year', location: '' });
+      setCompanyForm({ companyName: '', email: '', password: '', website: '', industry: '', location: '', description: '' });
+      setAdminForm({ email: '', password: '' });
     }
   }, [isOpen, defaultRole, isRegisterDefault]);
 
@@ -138,7 +142,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-fadeIn">
       <div className="relative w-full max-w-lg glass-panel rounded-2xl p-6 sm:p-8 border border-slate-700/80 shadow-2xl overflow-y-auto max-h-[90vh]">
         
         {/* Close Button */}
@@ -149,7 +153,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <X className="w-5 h-5" />
         </button>
 
-        {/* Modal Header */}
         <div className="text-center mb-6">
           <div className="flex items-center justify-center gap-2 mb-3">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold">
@@ -470,7 +473,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
             <button
               type="button"
-              onClick={() => { setIsRegister(!isRegister); setErrorMsg(''); }}
+              onClick={() => {
+                setIsRegister(!isRegister);
+                setErrorMsg('');
+                setStudentForm({ name: '', email: '', password: '', college: '', degree: 'B.Tech', branch: '', year: '3rd Year', location: '' });
+                setCompanyForm({ companyName: '', email: '', password: '', website: '', industry: '', location: '', description: '' });
+              }}
               className="text-indigo-400 hover:text-indigo-300 font-semibold underline underline-offset-2 ml-1"
             >
               {isRegister ? 'Sign In Here' : 'Register Now'}

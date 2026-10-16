@@ -12,7 +12,8 @@ import {
   Clock,
   ArrowRight,
   Zap,
-  PlayCircle
+  PlayCircle,
+  Flame
 } from 'lucide-react';
 import { Course, Internship } from '../types';
 
@@ -109,13 +110,27 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ onOpenAuth, 
             </p>
           </div>
 
-          <div className="flex items-center gap-3 bg-slate-900/90 p-4 rounded-2xl border border-slate-800">
-            <div className="w-12 h-12 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold text-lg">
-              {Object.keys(currentStudent.skills).length}
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            {/* Streak Card */}
+            <div className="flex items-center gap-3 bg-slate-900/90 p-4 rounded-2xl border border-slate-800">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-500 border border-amber-500/30 flex items-center justify-center font-bold text-lg">
+                <Flame className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Daily Streak</p>
+                <p className="text-sm font-extrabold text-white font-outfit">{currentStudent.streak} Days</p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-slate-400 font-medium">Verified Skills</p>
-              <p className="text-sm font-extrabold text-white font-outfit">Skill Profile Score</p>
+
+            {/* Skills Card */}
+            <div className="flex items-center gap-3 bg-slate-900/90 p-4 rounded-2xl border border-slate-800">
+              <div className="w-12 h-12 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold text-lg">
+                {Object.keys(currentStudent.skills).length}
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Verified Skills</p>
+                <p className="text-sm font-extrabold text-white font-outfit">Skill Profile Score</p>
+              </div>
             </div>
           </div>
         </div>

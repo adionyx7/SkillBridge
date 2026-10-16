@@ -16,6 +16,7 @@ export interface StudentProfile {
   bio?: string;
   githubUrl?: string;
   linkedinUrl?: string;
+  streak: number;
 }
 
 export interface CompanyProfile {
@@ -109,3 +110,41 @@ export interface Application {
   missingSkills: string[];
   studentSkillScores: Record<string, number>;
 }
+
+export interface CertificateAttachment {
+  id: string;
+  title: string;
+  issuer: string;
+  date: string;
+  credentialUrl?: string;
+  isVerified?: boolean;
+}
+
+export interface PostComment {
+  id: string;
+  authorName: string;
+  authorAvatar?: string;
+  text: string;
+  createdAt: string;
+}
+
+export interface ShowcasePost {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorRole: 'student' | 'company' | 'admin';
+  authorCollege?: string;
+  authorBranch?: string;
+  authorAvatar?: string;
+  bioHeadline: string;
+  content: string;
+  postType: 'certificate' | 'experience' | 'project' | 'achievement';
+  certificates: CertificateAttachment[];
+  images: string[];
+  tags: string[];
+  likesCount: number;
+  likedBy: string[];
+  comments: PostComment[];
+  createdAt: string;
+}
+

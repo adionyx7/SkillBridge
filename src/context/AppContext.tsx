@@ -8,9 +8,10 @@ import {
   Quiz,
   Internship,
   Application,
-  ApplicationStatus
+  ApplicationStatus,
+  ShowcasePost
 } from '../types';
-import { initialCourses, initialQuizzes, initialAdmin } from '../data/mockData';
+import { initialStudents, initialCompanies, initialAdmin, initialCourses, initialQuizzes, initialInternships, initialApplications, initialPosts } from '../data/mockData';
 import { getSupabase, isSupabaseConfigured } from '../lib/supabase';
 
 export interface AuthResult {
@@ -38,6 +39,7 @@ interface AppContextType {
   quizzes: Record<string, Quiz>;
   internships: Internship[];
   applications: Application[];
+  posts: ShowcasePost[];
   activeQuiz: Quiz | null;
   setActiveQuiz: (quiz: Quiz | null) => void;
   activeCourse: Course | null;
@@ -59,6 +61,10 @@ interface AppContextType {
   addInternship: (internshipData: any) => Promise<void>;
   enrollCourse: (courseId: string) => Promise<void>;
   completeCourse: (courseId: string) => Promise<void>;
+  createPost: (postData: Partial<ShowcasePost>) => Promise<boolean>;
+  likePost: (postId: string) => Promise<void>;
+  commentOnPost: (postId: string, text: string) => Promise<void>;
+  deletePost: (postId: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -84,33 +90,42 @@ function roleFromSupabaseUser(user: any): UserRole {
 }
 
 async function fetchLocalProfile(email: string) {
-  const res = await fetch(`${API_URL}/auth/profile?email=${encodeURIComponent(email)}`);
-  if (!res.ok) return null;
-  return res.json();
+  try {
+    const res = await fetch(`${API_URL}/auth/profile?email=${encodeURIComponent(email)}`);
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
 }
 
 async function createLocalProfile(payload: Record<string, unknown>) {
-  const res = await fetch(`${API_URL}/auth/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...payload, password: payload.password || 'supabase-auth' })
-  });
-  if (!res.ok) {
-    return fetchLocalProfile(String(payload.email || ''));
+  try {
+    const res = await fetch(`${API_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, password: payload.password || 'supabase-auth' })
+    });
+    if (!res.ok) {
+      return fetchLocalProfile(String(payload.email || ''));
+    }
+    return res.json();
+  } catch {
+    return null;
   }
-  return res.json();
 }
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [role, setRole] = useState<UserRole>('student');
+  const [role, setRole] = useState<UserRole>('guest');
   
-  const [students, setStudents] = useState<StudentProfile[]>([]);
-  const [companies, setCompanies] = useState<CompanyProfile[]>([]);
+  const [students, setStudents] = useState<StudentProfile[]>(initialStudents);
+  const [companies, setCompanies] = useState<CompanyProfile[]>(initialCompanies);
   
   const [courses] = useState<Course[]>(initialCourses);
   const [quizzes] = useState<Record<string, Quiz>>(initialQuizzes);
-  const [internships, setInternships] = useState<Internship[]>([]);
-  const [applications, setApplications] = useState<Application[]>([]);
+  const [internships, setInternships] = useState<Internship[]>(initialInternships);
+  const [applications, setApplications] = useState<Application[]>(initialApplications);
+  const [posts, setPosts] = useState<ShowcasePost[]>(initialPosts);
 
   const [currentStudent, setCurrentStudent] = useState<StudentProfile | null>(null);
   const [currentCompany, setCurrentCompany] = useState<CompanyProfile | null>(null);
@@ -121,24 +136,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     fetchData();
-    // Auto-login as demo student for testing
-    const demoStudent = students.find(s => s.email === 'alex.student@example.com');
-    if (demoStudent) {
-      setCurrentStudent(demoStudent);
-      setRole('student');
-    }
-  }, [students]);
+  }, []);
 
   const fetchData = async () => {
     try {
       const res = await fetch(`${API_URL}/data`);
-      const data = await res.json();
-      setStudents(data.students || []);
-      setCompanies(data.companies || []);
-      setInternships(data.internships || []);
-      setApplications(data.applications || []);
-    } catch (err) {
-      console.error('Failed to fetch initial data:', err);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.students?.length) setStudents(data.students);
+        if (data.companies?.length) setCompanies(data.companies);
+        if (data.internships?.length) setInternships(data.internships);
+        if (data.applications?.length) setApplications(data.applications);
+        if (data.posts?.length) setPosts(data.posts);
+      }
+    } catch {
+      // Deployed on static host without local backend, fallback to rich mock data
     }
   };
 
@@ -336,13 +348,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const loginAsCompany = async (email: string, password: string): Promise<AuthResult> => {
-    if (!isSupabaseConfigured()) return localLogin(email, password, 'company');
-    return supabaseLogin(email, password, 'company');
+    // Company accounts are always stored in local SQLite — never in Supabase
+    return localLogin(email, password, 'company');
   };
 
   const loginAsAdmin = async (email: string, password: string): Promise<AuthResult> => {
-    if (!isSupabaseConfigured()) return localLogin(email, password, 'admin');
-    return supabaseLogin(email, password, 'admin');
+    // Admin accounts are always stored in local SQLite — never in Supabase
+    return localLogin(email, password, 'admin');
   };
 
   const loginWithProvider = async (provider: 'google', accountRole: 'student' | 'company'): Promise<AuthResult> => {
@@ -412,35 +424,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const registerCompany = async (companyData: any): Promise<AuthResult> => {
-    if (!isSupabaseConfigured()) {
-      return localRegister({
-        role: 'company',
-        email: companyData.email,
-        password: companyData.password,
-        companyName: companyData.companyName,
-        website: companyData.website,
-        industry: companyData.industry,
-        location: companyData.location,
-        description: companyData.description
-      });
-    }
-    try {
-      const supabase = getSupabase();
-      const email = String(companyData.email || '').trim();
-      const password = String(companyData.password || '');
-      const { data, error } = await supabase.auth.signUp({
-        email, password,
-        options: { data: { role: 'company', companyName: companyData.companyName, website: companyData.website, industry: companyData.industry, location: companyData.location, description: companyData.description } }
-      });
-      if (error) return { success: false, error: error.message };
-      if (!data.user) return { success: false, error: 'Registration failed.' };
-      await createLocalProfile({ role: 'company', email, companyName: companyData.companyName, website: companyData.website, industry: companyData.industry, location: companyData.location, description: companyData.description });
-      if (!data.session) return { success: true, needsEmailConfirm: true, error: 'Account created. Confirm your email, then log in.' };
-      await hydrateSupabaseUser(data.user);
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: getAuthErrorMessage(err, 'Unable to register.') };
-    }
+    // Company accounts are always registered in local SQLite — never in Supabase
+    return localRegister({
+      role: 'company',
+      email: companyData.email,
+      password: companyData.password,
+      companyName: companyData.companyName,
+      website: companyData.website,
+      industry: companyData.industry,
+      location: companyData.location,
+      description: companyData.description
+    });
   };
 
   const updateStudentProfile = async (updates: any) => {
@@ -584,15 +578,138 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (err) { console.error(err); }
   };
 
+  const createPost = async (postData: Partial<ShowcasePost>): Promise<boolean> => {
+    const authorId = currentStudent ? currentStudent.id : (currentCompany ? currentCompany.id : 'guest');
+    const authorName = currentStudent ? currentStudent.name : (currentCompany ? currentCompany.companyName : (postData.authorName || 'Guest User'));
+    const authorRole = role === 'guest' ? 'student' : role;
+    const authorCollege = currentStudent?.college || '';
+    const authorBranch = currentStudent?.branch || '';
+    const bioHeadline = postData.bioHeadline || (currentStudent ? `${currentStudent.year || 'Student'} @ ${currentStudent.college}` : '');
+
+    const payload = {
+      ...postData,
+      authorId,
+      authorName,
+      authorRole,
+      authorCollege,
+      authorBranch,
+      bioHeadline
+    };
+
+    try {
+      const res = await fetch(`${API_URL}/posts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success && data.post) {
+        setPosts(prev => [data.post, ...prev]);
+        return true;
+      }
+    } catch {
+      // Fallback for static client execution
+      const fallbackPost: ShowcasePost = {
+        id: `post_${Date.now()}`,
+        authorId,
+        authorName,
+        authorRole: authorRole as 'student' | 'company' | 'admin',
+        authorCollege,
+        authorBranch,
+        bioHeadline,
+        content: postData.content || '',
+        postType: postData.postType || 'experience',
+        certificates: postData.certificates || [],
+        images: postData.images || [],
+        tags: postData.tags || [],
+        likesCount: 0,
+        likedBy: [],
+        comments: [],
+        createdAt: 'Just now'
+      };
+      setPosts(prev => [fallbackPost, ...prev]);
+      return true;
+    }
+    return false;
+  };
+
+  const likePost = async (postId: string) => {
+    const userId = currentStudent ? currentStudent.id : (currentCompany ? currentCompany.id : 'guest_user');
+    try {
+      const res = await fetch(`${API_URL}/posts/${postId}/like`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPosts(prev => prev.map(p => p.id === postId ? { ...p, likesCount: data.likesCount, likedBy: data.likedBy } : p));
+        return;
+      }
+    } catch {
+      // Fallback
+    }
+
+    setPosts(prev => prev.map(p => {
+      if (p.id !== postId) return p;
+      const alreadyLiked = p.likedBy.includes(userId);
+      const newLikedBy = alreadyLiked ? p.likedBy.filter(u => u !== userId) : [...p.likedBy, userId];
+      return {
+        ...p,
+        likedBy: newLikedBy,
+        likesCount: alreadyLiked ? Math.max(0, p.likesCount - 1) : p.likesCount + 1
+      };
+    }));
+  };
+
+  const commentOnPost = async (postId: string, text: string) => {
+    if (!text.trim()) return;
+    const authorName = currentStudent ? currentStudent.name : (currentCompany ? currentCompany.companyName : 'Student');
+
+    try {
+      const res = await fetch(`${API_URL}/posts/${postId}/comment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ authorName, text })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPosts(prev => prev.map(p => p.id === postId ? { ...p, comments: data.comments } : p));
+        return;
+      }
+    } catch {
+      // Fallback
+    }
+
+    const newComment = {
+      id: `comm_${Date.now()}`,
+      authorName,
+      text,
+      createdAt: 'Just now'
+    };
+
+    setPosts(prev => prev.map(p => p.id === postId ? { ...p, comments: [...p.comments, newComment] } : p));
+  };
+
+  const deletePost = async (postId: string) => {
+    try {
+      await fetch(`${API_URL}/posts/${postId}`, { method: 'DELETE' });
+    } catch {
+      // Fallback
+    }
+    setPosts(prev => prev.filter(p => p.id !== postId));
+  };
+
   return (
     <AppContext.Provider value={{
       role, setRole, currentStudent, currentCompany, currentAdmin,
-      students, companies, courses, quizzes, internships, applications,
+      students, companies, courses, quizzes, internships, applications, posts,
       activeQuiz, setActiveQuiz, activeCourse, setActiveCourse,
       loginAsStudent, loginAsCompany, loginAsAdmin, loginWithProvider, logout,
       registerStudent, registerCompany, updateStudentProfile, updateCompanyProfile,
       calculateInternshipMatch, applyForInternship, updateApplicationStatus,
-      updateSkillScore, verifyCompany, addInternship, enrollCourse, completeCourse
+      updateSkillScore, verifyCompany, addInternship, enrollCourse, completeCourse,
+      createPost, likePost, commentOnPost, deletePost
     }}>
       {children}
     </AppContext.Provider>

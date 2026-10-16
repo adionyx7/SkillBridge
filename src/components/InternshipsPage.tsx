@@ -20,44 +20,111 @@ import {
 } from 'lucide-react';
 import { Internship, CompanyProfile } from '../types';
 
-export const InternshipsPage: React.FC = () => {
+interface InternshipsPageProps {
+  initialSearch?: string;
+  initialLocation?: string;
+  initialSkill?: string;
+  initialWorkMode?: string;
+}
+
+export const InternshipsPage: React.FC<InternshipsPageProps> = ({
+  initialSearch = '',
+  initialLocation = 'All',
+  initialSkill = 'All',
+  initialWorkMode = 'All'
+}) => {
   const { internships, currentStudent, calculateInternshipMatch, applyForInternship, currentCompany, companies } = useApp();
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSkill, setSelectedSkill] = useState<string>('All');
-  const [selectedLocation, setSelectedLocation] = useState<string>('All');
-  const [selectedWorkMode, setSelectedWorkMode] = useState<string>('All');
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
+  const [selectedSkill, setSelectedSkill] = useState<string>(initialSkill);
+  const [selectedLocation, setSelectedLocation] = useState<string>(initialLocation);
+  const [selectedWorkMode, setSelectedWorkMode] = useState<string>(initialWorkMode);
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [minStipend, setMinStipend] = useState<number>(0);
+  const [minMatchScore, setMinMatchScore] = useState<number>(0);
   const [sortBy, setSortBy] = useState<string>('newest');
 
+  React.useEffect(() => {
+    setSearchQuery(initialSearch);
+    setSelectedLocation(initialLocation);
+    setSelectedSkill(initialSkill);
+    setSelectedWorkMode(initialWorkMode);
+  }, [initialSearch, initialLocation, initialSkill, initialWorkMode]);
+
   const allSkills = ['All', 'Python', 'JavaScript', 'React', 'Node.js', 'SQL', 'Data Science', 'Machine Learning', 'UI/UX', 'Cybersecurity', 'Cloud Computing', 'Java', 'TypeScript', 'Docker', 'AWS'];
-  const locations = ['All', 'Bengaluru', 'Hyderabad', 'Mumbai', 'Delhi', 'Chennai', 'Pune', 'Remote'];
+  const locations = ['All', 'Bengaluru', 'Hyderabad', 'Mumbai', 'Delhi', 'Chennai', 'Pune', 'Remote', 'Kolkata', 'Jaipur'];
   const workModes = ['All', 'Remote', 'Hybrid', 'On-site'];
+  const internshipCategories = ['All', 'Engineering & Tech', 'Business & MBA', 'Design & Creative', 'Marketing & Sales', 'Finance & Accounting', 'Human Resources'];
+  const stipendOptions = [
+    { label: 'Any Stipend', value: 0 },
+    { label: '₹5,000+/mo', value: 5000 },
+    { label: '₹15,000+/mo', value: 15000 },
+    { label: '₹25,000+/mo', value: 25000 },
+  ];
+  const matchScoreOptions = [
+    { label: 'Any Match', value: 0 },
+    { label: 'Medium Match (50%+)', value: 50 },
+    { label: 'High Match (75%+)', value: 75 },
+    { label: 'Perfect Match (90%+)', value: 90 },
+  ];
+
+  // Helper to parse numeric stipend from string
+  const parseStipend = (stipendStr: string): number => {
+    if (!stipendStr) return 0;
+    const num = stipendStr.replace(/[^0-9]/g, '');
+    return num ? parseInt(num, 10) : 0;
+  };
 
   const filteredInternships = internships.filter(internship => {
-    const matchesSearch = internship.position.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch = !searchQuery ||
+      internship.position.toLowerCase().includes(searchQuery.toLowerCase()) ||
       internship.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       internship.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       internship.requiredSkills.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesSkill = selectedSkill === 'All' || internship.requiredSkills.includes(selectedSkill);
-    const matchesLocation = selectedLocation === 'All' || internship.location.includes(selectedLocation);
+    const matchesLocation = selectedLocation === 'All' || internship.location.toLowerCase().includes(selectedLocation.toLowerCase());
     const matchesWorkMode = selectedWorkMode === 'All' || internship.workMode === selectedWorkMode;
-    return matchesSearch && matchesSkill && matchesLocation && matchesWorkMode;
+    const matchesStipend = parseStipend(internship.stipend) >= minStipend;
+    let matchesMatchScore = true;
+    if (minMatchScore > 0 && currentStudent) {
+      const mInfo = calculateInternshipMatch(currentStudent.skills, internship.requiredSkills);
+      matchesMatchScore = mInfo.matchPercentage >= minMatchScore;
+    }
+    let matchesCategory = true;
+    if (selectedCategory === 'Engineering & Tech') matchesCategory = internship.requiredSkills.some(s => ['Python','JavaScript','React','Node.js','SQL','Data Science','Machine Learning','TypeScript','Java','Docker','AWS','Cloud Computing'].includes(s));
+    else if (selectedCategory === 'Design & Creative') matchesCategory = internship.requiredSkills.some(s => s.includes('UI/UX') || s.includes('Design') || s.includes('Figma'));
+    else if (selectedCategory === 'Marketing & Sales') matchesCategory = internship.position.toLowerCase().includes('marketing') || internship.position.toLowerCase().includes('sales');
+    else if (selectedCategory === 'Finance & Accounting') matchesCategory = internship.position.toLowerCase().includes('finance') || internship.position.toLowerCase().includes('accounting') || internship.position.toLowerCase().includes('analyst');
+    else if (selectedCategory === 'Human Resources') matchesCategory = internship.position.toLowerCase().includes('hr') || internship.position.toLowerCase().includes('human resource');
+    return matchesSearch && matchesSkill && matchesLocation && matchesWorkMode && matchesStipend && matchesMatchScore && matchesCategory;
   });
 
   const sortedInternships = [...filteredInternships].sort((a, b) => {
     switch (sortBy) {
       case 'newest': return 0;
-      case 'stipend': return 0;
+      case 'stipend': return parseStipend(b.stipend) - parseStipend(a.stipend);
       case 'match': {
         const studentSkills = currentStudent?.skills || { Python: 75, JavaScript: 70, React: 60 };
         const matchA = calculateInternshipMatch(studentSkills, a.requiredSkills);
         const matchB = calculateInternshipMatch(studentSkills, b.requiredSkills);
         return matchB.matchPercentage - matchA.matchPercentage;
       }
-      case 'applicants': return (b.applicantsCount || 0) - (a.applicantsCount || 0);
+      case 'applicants': return (a.applicantsCount || 0) - (b.applicantsCount || 0);
       default: return 0;
     }
   });
+
+  const hasFiltersActive = searchQuery !== '' || selectedSkill !== 'All' || selectedLocation !== 'All' || selectedWorkMode !== 'All' || selectedCategory !== 'All' || minStipend > 0 || minMatchScore > 0;
+
+  const resetAllFilters = () => {
+    setSelectedSkill('All');
+    setSelectedLocation('All');
+    setSelectedWorkMode('All');
+    setSelectedCategory('All');
+    setMinStipend(0);
+    setMinMatchScore(0);
+    setSearchQuery('');
+  };
 
   const hasApplied = (internshipId: string) => {
     // This would need access to applications - simplified for now
@@ -118,70 +185,224 @@ export const InternshipsPage: React.FC = () => {
         </div>
       </header>
 
-      {/* Filters & Search */}
+      {/* Filters & Search Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 mb-8">
-        <div className="glass-panel rounded-2xl p-5 border border-slate-800">
-          {/* Search */}
-          <div className="relative mb-5">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+        <div className="glass-panel rounded-2xl p-5 border border-slate-800 space-y-5">
+          
+          {/* Top Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-400" />
             <input
               type="text"
-              placeholder="Search internships by role, company, skill, or location..."
+              placeholder="Search by role, company, skill, or location..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+              className="w-full pl-12 pr-10 py-3.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 text-sm shadow-inner transition-all"
             />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs font-semibold px-2 py-1 rounded bg-slate-800"
+              >
+                Clear
+              </button>
+            )}
           </div>
 
-          {/* Filter Chips & Sort */}
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            <div className="flex flex-wrap gap-2">
-              <div className="relative">
-                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                <select
-                  value={selectedSkill}
-                  onChange={e => setSelectedSkill(e.target.value)}
-                  className="pl-10 pr-10 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm appearance-none focus:outline-none focus:border-purple-500 cursor-pointer"
-                >
-                  {allSkills.map(skill => <option key={skill} value={skill}>{skill}</option>)}
-                </select>
-              </div>
-              <div className="relative">
-                <select
-                  value={selectedLocation}
-                  onChange={e => setSelectedLocation(e.target.value)}
-                  className="pl-4 pr-10 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm appearance-none focus:outline-none focus:border-purple-500 cursor-pointer"
-                >
-                  {locations.map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
-              </div>
-              <div className="relative">
-                <select
-                  value={selectedWorkMode}
-                  onChange={e => setSelectedWorkMode(e.target.value)}
-                  className="pl-4 pr-10 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm appearance-none focus:outline-none focus:border-purple-500 cursor-pointer"
-                >
-                  {workModes.map(w => <option key={w} value={w}>{w}</option>)}
-                </select>
-              </div>
-            </div>
+          {/* Quick Filter Pills Bar */}
+          <div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-purple-400" /> Quick Internship Search:
+            </p>
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+              {[
+                { label: '⚡ All Internships', type: 'all' },
+                { label: '🏠 Work From Home', type: 'workMode', value: 'Remote' },
+                { label: '📍 Bengaluru', type: 'location', value: 'Bengaluru' },
+                { label: '📍 Delhi', type: 'location', value: 'Delhi' },
+                { label: '📍 Hyderabad', type: 'location', value: 'Hyderabad' },
+                { label: '📍 Mumbai', type: 'location', value: 'Mumbai' },
+                { label: '🐍 Python', type: 'skill', value: 'Python' },
+                { label: '⚛️ React', type: 'skill', value: 'React' },
+                { label: '📊 Data Science', type: 'skill', value: 'Data Science' },
+                { label: '🎨 UI/UX', type: 'skill', value: 'UI/UX' },
+                { label: '✨ High Match 75%+', type: 'match', value: 75 },
+              ].map((pill, idx) => {
+                const isSelected =
+                  pill.type === 'all'
+                    ? selectedSkill === 'All' && selectedLocation === 'All' && selectedWorkMode === 'All' && !searchQuery && minMatchScore === 0 && minStipend === 0
+                    : pill.type === 'workMode'
+                    ? selectedWorkMode === pill.value
+                    : pill.type === 'location'
+                    ? selectedLocation === pill.value
+                    : pill.type === 'skill'
+                    ? selectedSkill === pill.value
+                    : pill.type === 'match'
+                    ? minMatchScore === pill.value
+                    : searchQuery === pill.value;
 
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400">Sort:</span>
-              <div className="relative">
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
-                <select
-                  value={sortBy}
-                  onChange={e => setSortBy(e.target.value)}
-                  className="pl-4 pr-10 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm appearance-none focus:outline-none focus:border-purple-500 cursor-pointer"
-                >
-                  <option value="newest">Newest First</option>
-                  <option value="match">Best Skill Match</option>
-                  <option value="applicants">Fewest Applicants</option>
-                </select>
-              </div>
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      if (pill.type === 'all') {
+                        resetAllFilters();
+                      } else if (pill.type === 'workMode') {
+                        setSelectedWorkMode(selectedWorkMode === pill.value ? 'All' : pill.value as string);
+                      } else if (pill.type === 'location') {
+                        setSelectedLocation(selectedLocation === pill.value ? 'All' : pill.value as string);
+                      } else if (pill.type === 'skill') {
+                        setSelectedSkill(selectedSkill === pill.value ? 'All' : pill.value as string);
+                      } else if (pill.type === 'match') {
+                        setMinMatchScore(minMatchScore === pill.value ? 0 : pill.value as number);
+                      } else if (pill.type === 'search') {
+                        setSearchQuery(searchQuery === pill.value ? '' : pill.value as string);
+                      }
+                    }}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 border flex items-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-purple-600 text-white border-purple-400 shadow-md shadow-purple-600/30 scale-105'
+                        : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 border-slate-700/80 hover:border-slate-600'
+                    }`}
+                  >
+                    {pill.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
+
+          {/* Multi-Dropdown Filter Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-2 border-t border-slate-800/80">
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Skill</label>
+              <select
+                value={selectedSkill}
+                onChange={e => setSelectedSkill(e.target.value)}
+                className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs font-medium focus:outline-none focus:border-purple-500 cursor-pointer"
+              >
+                {allSkills.map(skill => (
+                  <option key={skill} value={skill}>{skill}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Location</label>
+              <select
+                value={selectedLocation}
+                onChange={e => setSelectedLocation(e.target.value)}
+                className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs font-medium focus:outline-none focus:border-purple-500 cursor-pointer"
+              >
+                {locations.map(loc => (
+                  <option key={loc} value={loc}>{loc}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Work Mode</label>
+              <select
+                value={selectedWorkMode}
+                onChange={e => setSelectedWorkMode(e.target.value)}
+                className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs font-medium focus:outline-none focus:border-purple-500 cursor-pointer"
+              >
+                {workModes.map(w => (
+                  <option key={w} value={w}>{w}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Min Stipend</label>
+              <select
+                value={minStipend}
+                onChange={e => setMinStipend(Number(e.target.value))}
+                className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs font-medium focus:outline-none focus:border-purple-500 cursor-pointer"
+              >
+                {stipendOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Min Match %</label>
+              <select
+                value={minMatchScore}
+                onChange={e => setMinMatchScore(Number(e.target.value))}
+                className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs font-medium focus:outline-none focus:border-purple-500 cursor-pointer"
+              >
+                {matchScoreOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Sort By</label>
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value)}
+                className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs font-medium focus:outline-none focus:border-purple-500 cursor-pointer"
+              >
+                <option value="newest">Newest First</option>
+                <option value="match">Best Skill Match</option>
+                <option value="stipend">Highest Stipend</option>
+                <option value="applicants">Fewest Applicants</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Active Filter Badges */}
+          {hasFiltersActive && (
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-800/80 text-xs">
+              <span className="text-slate-400 font-medium flex items-center gap-1"><Filter className="w-3 h-3" /> Active:</span>
+              {searchQuery && (
+                <span className="px-2.5 py-1 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-300 flex items-center gap-1">
+                  🔍 "{searchQuery}"
+                  <button onClick={() => setSearchQuery('')} className="hover:text-white font-bold ml-0.5">✕</button>
+                </span>
+              )}
+              {selectedSkill !== 'All' && (
+                <span className="px-2.5 py-1 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-300 flex items-center gap-1">
+                  Skill: {selectedSkill}
+                  <button onClick={() => setSelectedSkill('All')} className="hover:text-white font-bold ml-0.5">✕</button>
+                </span>
+              )}
+              {selectedLocation !== 'All' && (
+                <span className="px-2.5 py-1 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-300 flex items-center gap-1">
+                  Location: {selectedLocation}
+                  <button onClick={() => setSelectedLocation('All')} className="hover:text-white font-bold ml-0.5">✕</button>
+                </span>
+              )}
+              {selectedWorkMode !== 'All' && (
+                <span className="px-2.5 py-1 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-300 flex items-center gap-1">
+                  Mode: {selectedWorkMode}
+                  <button onClick={() => setSelectedWorkMode('All')} className="hover:text-white font-bold ml-0.5">✕</button>
+                </span>
+              )}
+              {minStipend > 0 && (
+                <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 flex items-center gap-1">
+                  Stipend: ₹{minStipend.toLocaleString()}+
+                  <button onClick={() => setMinStipend(0)} className="hover:text-white font-bold ml-0.5">✕</button>
+                </span>
+              )}
+              {minMatchScore > 0 && (
+                <span className="px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 flex items-center gap-1">
+                  Match: {minMatchScore}%+
+                  <button onClick={() => setMinMatchScore(0)} className="hover:text-white font-bold ml-0.5">✕</button>
+                </span>
+              )}
+              <button
+                onClick={resetAllFilters}
+                className="ml-auto px-3 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold transition-all"
+              >
+                Reset All ✕
+              </button>
+            </div>
+          )}
+
         </div>
       </section>
 
@@ -189,7 +410,7 @@ export const InternshipsPage: React.FC = () => {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-2xl font-extrabold text-white font-outfit">
-            All Opportunities ({sortedInternships.length})
+            {hasFiltersActive ? 'Filtered Results' : 'All Opportunities'} <span className="text-purple-400">({sortedInternships.length})</span>
           </h2>
           <div className="flex items-center gap-2 text-xs text-slate-400">
             <Briefcase className="w-4 h-4 text-purple-400" />

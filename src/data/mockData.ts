@@ -1,4 +1,4 @@
-import { StudentProfile, CompanyProfile, AdminProfile, Course, Quiz, Internship, Application } from '../types';
+import { StudentProfile, CompanyProfile, AdminProfile, Course, Quiz, Internship, Application, ShowcasePost } from '../types';
 
 export const initialStudents: StudentProfile[] = [
   {
@@ -31,7 +31,8 @@ export const initialStudents: StudentProfile[] = [
     },
     bio: 'Passionate developer focusing on scalable web applications and algorithmic data structures. Building products that solve real-world problems.',
     githubUrl: 'https://github.com/alexmorgan',
-    linkedinUrl: 'https://linkedin.com/in/alexmorgan'
+    linkedinUrl: 'https://linkedin.com/in/alexmorgan',
+    streak: 0
   },
   {
     id: 'std_2',
@@ -62,7 +63,8 @@ export const initialStudents: StudentProfile[] = [
     },
     bio: 'Machine learning & data analytics researcher. Published 2 papers on predictive modeling. Seeking ML engineering internship.',
     githubUrl: 'https://github.com/sophiachen',
-    linkedinUrl: 'https://linkedin.com/in/sophiachen'
+    linkedinUrl: 'https://linkedin.com/in/sophiachen',
+    streak: 0
   },
   {
     id: 'std_3',
@@ -90,7 +92,8 @@ export const initialStudents: StudentProfile[] = [
     },
     bio: 'Frontend enthusiast building responsive web apps. Active in open source. Love creating delightful user experiences.',
     githubUrl: 'https://github.com/rahulsharma',
-    linkedinUrl: 'https://linkedin.com/in/rahulsharma'
+    linkedinUrl: 'https://linkedin.com/in/rahulsharma',
+    streak: 0
   },
   {
     id: 'std_4',
@@ -118,7 +121,8 @@ export const initialStudents: StudentProfile[] = [
     },
     bio: 'ECE student exploring software development. Strong algorithmic foundation. Transitioning to full-stack development.',
     githubUrl: 'https://github.com/priyapatel',
-    linkedinUrl: 'https://linkedin.com/in/priyapatel'
+    linkedinUrl: 'https://linkedin.com/in/priyapatel',
+    streak: 0
   }
 ];
 
@@ -1002,3 +1006,67 @@ export const initialApplications: Application[] = [
     }
   }
 ];
+
+export const initialPosts: ShowcasePost[] = [
+  {
+    id: 'post_1',
+    authorId: 'std_1',
+    authorName: 'Alex Morgan',
+    authorRole: 'student',
+    authorCollege: 'IIT Bombay',
+    authorBranch: 'Computer Science',
+    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    bioHeadline: '3rd Year CS Student @ IIT Bombay | Full-Stack Web Architecture Specialist',
+    content: 'Extremely thrilled to share that I just completed the "Advanced React & Web Architecture" certification on SkillBridge! Spent 4 weeks building scalable micro-frontends and optimizing state management. Huge thanks to the SkillBridge ecosystem for the hands-on project verification!',
+    postType: 'certificate',
+    certificates: [
+      {
+        id: 'cert_101',
+        title: 'Advanced React & Web Architecture',
+        issuer: 'SkillBridge Ecosystem',
+        date: 'Sept 2026',
+        isVerified: true
+      }
+    ],
+    images: [
+      'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&auto=format&fit=crop&q=80'
+    ],
+    tags: ['React', 'WebDev', 'Certificate', 'Frontend'],
+    likesCount: 24,
+    likedBy: ['std_2', 'comp_1'],
+    comments: [
+      {
+        id: 'comm_1',
+        authorName: 'Sophia Chen',
+        authorAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+        text: 'Congratulations Alex! Super inspiring work on the React architecture projects.',
+        createdAt: '2 hours ago'
+      }
+    ],
+    createdAt: '1 day ago'
+  },
+  {
+    id: 'post_2',
+    authorId: 'std_2',
+    authorName: 'Sophia Chen',
+    authorRole: 'student',
+    authorCollege: 'BITS Pilani',
+    authorBranch: 'Information Systems',
+    authorAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+    bioHeadline: 'Data Analytics & ML Researcher | BITS Pilani 4th Year',
+    content: 'Wrapped up a fantastic data science project analyzing real-time predictive models using Python, Pandas, and SQL. Sharing a glance of our dataset insights and automated dashboard metrics!',
+    postType: 'experience',
+    certificates: [],
+    images: [
+      'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&auto=format&fit=crop&q=80'
+    ],
+    tags: ['DataScience', 'Python', 'MachineLearning', 'InternshipExperience'],
+    likesCount: 38,
+    likedBy: ['std_1'],
+    comments: [],
+    createdAt: '2 days ago'
+  }
+];
+
